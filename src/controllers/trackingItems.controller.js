@@ -26,4 +26,10 @@ const getHistory = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: history });
 });
 
-module.exports = { create, list, remove, getHistory };
+const preview = asyncHandler(async (req, res) => {
+  const { url } = req.body;
+  const data = await trackingItemsService.previewTrackingItem(url);
+  res.status(200).json({ success: true, data });
+});
+
+module.exports = { create, list, remove, getHistory, preview };

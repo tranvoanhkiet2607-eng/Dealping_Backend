@@ -117,10 +117,31 @@ async function getTrackingItemHistory(id) {
   return history;
 }
 
+async function previewTrackingItem(shopeeUrl) {
+  if (!shopeeUrl) throw new ApiError(400, "Thiếu shopeeUrl");
+  const { itemId, shopId, resolvedUrl } = await parseShopeeLink(shopeeUrl);
+  let currentPrice = null;
+  let productName = null;
+  try {
+    const priceInfo = await fetchCurrentPrice(itemId, shopId);
+    currentPrice = priceInfo.price;
+    productName = priceInfo.productName;
+  } catch (error) {
+    throw new ApiError(400, "Không thể lấy thông tin sản phẩm từ link này");
+  }
+
+  return {
+    productName,
+    currentPrice,
+    resolvedUrl
+  };
+}
+
 module.exports = {
   getMaxSlots,
   createTrackingItem,
   listTrackingItems,
   deleteTrackingItem,
   getTrackingItemHistory,
+  previewTrackingItem,
 };
