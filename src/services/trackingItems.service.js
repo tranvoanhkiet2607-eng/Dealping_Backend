@@ -142,7 +142,15 @@ async function previewTrackingItem(shopeeUrl) {
     }
   }
 
-  if (itemId && shopId) {
+  // ── Xác định platform dựa trên hostname của resolvedUrl ──────────────────
+  let hostname = "";
+  try { hostname = new URL(resolvedUrl).hostname; } catch { /* ignore */ }
+
+  const isLazada = hostname.includes("lazada");
+  const isTikTok = hostname.includes("tiktok");
+  const isShopee = !isLazada && !isTikTok; // mọi thứ còn lại coi là Shopee
+
+  if (isShopee && itemId && shopId) {
     // Cố gắng lấy giá từ Shopee API, nếu bị chặn thì fallback gracefully
     try {
       const priceInfo = await fetchCurrentPrice(itemId, shopId);
@@ -153,21 +161,27 @@ async function previewTrackingItem(shopeeUrl) {
       productName = extractShopeeNameFromUrl(resolvedUrl) || "Sản phẩm Shopee";
       currentPrice = null; // Không có giá thật — hiện "Chưa có giá"
     }
-  } else if (resolvedUrl.includes("lazada.vn")) {
+  } else if (isLazada) {
     // Lazada: trích tên từ URL slug
-    const match = resolvedUrl.match(/\/products\/([^/?#]+?)(?:-i\d+|\?|$)/);
-    if (match) {
-      productName = decodeURIComponent(match[1])
+    // Pattern 1: /products/Ten-San-Pham-i539784851-s9802267124.html
+    // Pattern 2: /products/Ten-San-Pham
+    const matchSlug =
+      resolvedUrl.match(/\/products\/([^/?#]+?)-i\d+/) ||
+      resolvedUrl.match(/\/products\/([^/?#]+?)(?:-s\d+)?(?:\.html|\?|$|#)/) ||
+      resolvedUrl.match(/\/products\/([^/?#]+)/);
+    if (matchSlug) {
+      productName = decodeURIComponent(matchSlug[1])
         .replace(/-/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase())
-        .trim();
+        .trim()
+        // Viết hoa chữ đầu mỗi từ (tiếng Anh); giữ nguyên các từ tiếng Việt
+        .replace(/\b([a-zA-Z])/g, (l) => l.toUpperCase());
     } else {
       productName = "Sản phẩm Lazada";
     }
-    // Mock price cho demo (Lazada block Axios)
-    currentPrice = Math.floor(Math.random() * 500) * 1000 + 100000;
-  } else if (resolvedUrl.includes("tiktok.com")) {
-    // TikTok Shop: cố gắng trích tên từ URL
+    // Lazada block Axios → không lấy được giá thật; để null (frontend hiện "Chưa có giá")
+    currentPrice = null;
+  } else if (isTikTok) {
+    // TikTok Shop: trích tên từ URL nếu có
     try {
       const tiktokPath = new URL(resolvedUrl).pathname;
       const tiktokMatch = tiktokPath.match(/\/view\/item\/(\d+)/) ||
@@ -176,8 +190,12 @@ async function previewTrackingItem(shopeeUrl) {
     } catch {
       productName = "Sản phẩm TikTok Shop";
     }
-    // Mock price cho demo (TikTok block Axios)
-    currentPrice = Math.floor(Math.random() * 300) * 1000 + 50000;
+    // TikTok block Axios → không lấy được giá thật
+    currentPrice = null;
+  } else {
+    // Shopee nhưng không có itemId/shopId → fallback tên từ URL
+    productName = extractShopeeNameFromUrl(resolvedUrl) || "Sản phẩm Shopee";
+    currentPrice = null;
   }
 
   return {
