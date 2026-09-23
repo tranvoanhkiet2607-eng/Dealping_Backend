@@ -150,17 +150,11 @@ async function previewTrackingItem(shopeeUrl) {
   const isTikTok = hostname.includes("tiktok");
   const isShopee = !isLazada && !isTikTok; // mọi thứ còn lại coi là Shopee
 
-  if (isShopee && itemId && shopId) {
-    // Cố gắng lấy giá từ Shopee API, nếu bị chặn thì fallback gracefully
-    try {
-      const priceInfo = await fetchCurrentPrice(itemId, shopId);
-      currentPrice = priceInfo.price;
-      productName = priceInfo.productName;
-    } catch {
-      // Shopee API bị block (anti-bot) → fallback: trích tên từ URL slug
-      productName = extractShopeeNameFromUrl(resolvedUrl) || "Sản phẩm Shopee";
-      currentPrice = null; // Không có giá thật — hiện "Chưa có giá"
-    }
+  if (isShopee) {
+    // Preview: chỉ trích tên từ URL slug, không gọi Shopee API (bị block → treo request)
+    // Giá thật sẽ được lấy khi user kích hoạt Radar (createTrackingItem)
+    productName = extractShopeeNameFromUrl(resolvedUrl) || "Sản phẩm Shopee";
+    currentPrice = null;
   } else if (isLazada) {
     // Lazada: trích tên từ URL slug
     // Pattern 1: /products/Ten-San-Pham-i539784851-s9802267124.html

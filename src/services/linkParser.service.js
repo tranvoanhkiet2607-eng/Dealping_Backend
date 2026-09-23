@@ -26,6 +26,7 @@ async function resolveShortLink(shortUrl, maxHops = 5) {
   for (let hop = 0; hop < maxHops; hop++) {
     const response = await axios.get(currentUrl, {
       maxRedirects: 0,
+      timeout: 8000,
       validateStatus: (status) => (status >= 200 && status < 300) || (status >= 300 && status < 400),
       headers: { "User-Agent": "Mozilla/5.0 (DealPing-LinkResolver)" },
     });

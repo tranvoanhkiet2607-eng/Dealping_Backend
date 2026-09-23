@@ -68,6 +68,27 @@ Danh sách item đang theo dõi của user.
 ### `DELETE /api/tracking-items/:id`
 Xoá 1 item (body cần `userId` để xác thực quyền sở hữu).
 
+### `GET /api/test/simulate-price-drop`
+API giả lập sập giá phục vụ pitch/demo và kiểm thử âm thanh báo động trên web client.
+
+**Response mẫu (200):**
+```json
+{
+  "status": "success",
+  "isPriceDrop": true,
+  "message": "Báo động sập giá! Nút test gọi thành công.",
+  "data": {
+    "productName": "Chuột không dây Logitech (Test)",
+    "oldPrice": 350000,
+    "newPrice": 99000,
+    "flashSalePrice": 99000,
+    "cashbackCommission": 5000,
+    "discountCodes": ["GIAM99K", "FREESHIP"],
+    "timestamp": "2026-09-23T..."
+  }
+}
+```
+
 ## Lưu ý quan trọng — rủi ro kỹ thuật
 
 `shopeePriceService.js` hiện gọi endpoint public không chính thức của Shopee

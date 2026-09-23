@@ -12,11 +12,14 @@ const SHOPEE_ITEM_ENDPOINT = "https://shopee.vn/api/v4/item/get";
  * Giá trả về từ Shopee là số nguyên đã nhân 100000 (đơn vị nhỏ nhất) -> cần chia lại.
  */
 async function fetchCurrentPrice(itemId, shopId) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
   try {
     const { data } = await axios.get(SHOPEE_ITEM_ENDPOINT, {
       params: { itemid: itemId, shopid: shopId },
       headers: { "User-Agent": "Mozilla/5.0 (DealPing-PriceChecker)" },
       timeout: 5000,
+      signal: controller.signal,
     });
 
     const item = data?.data;
@@ -29,6 +32,7 @@ async function fetchCurrentPrice(itemId, shopId) {
       productName: item.name,
     };
   } catch (err) {
+    clearTimeout(timeoutId);
     if (err instanceof ApiError) throw err;
     throw new ApiError(502, "Không gọi được API giá Shopee", { cause: err.message });
   }
