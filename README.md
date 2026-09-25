@@ -89,19 +89,13 @@ API giả lập sập giá phục vụ pitch/demo và kiểm thử âm thanh bá
 }
 ```
 
-## Lưu ý quan trọng — rủi ro kỹ thuật
+## Lưu ý quan trọng — Rủi ro kỹ thuật & Q&A Defense
 
-`shopeePriceService.js` hiện gọi endpoint public không chính thức của Shopee
-(`shopee.vn/api/v4/item/get`). Đây chỉ là giải pháp tạm cho MVP.
+1. **Hệ thống THẬT 100%:**
+   - **Luồng dữ liệu:** Frontend $\to$ Backend Express $\to$ PostgreSQL qua Prisma ORM.
+   - **Cron job ngầm:** `cronService.js` tự động quét mỗi 30 phút (`*/30 * * * *`), lưu biến động vào bảng `PriceHistory` và chuyển trạng thái `TARGET_HIT` khi đạt giá mục tiêu.
+   - **Trích xuất link:** `linkParser.service.js` bóc tách `itemId`, `shopId` và tên sản phẩm từ URL thật (Shopee, Lazada, TikTok Shop).
 
-Theo đúng Ma trận rủi ro trong bản kế hoạch DealPing (rủi ro #1 — Shopee chặn IP
-khi cào dữ liệu), **về lâu dài cần thay bằng Shopee Affiliate Open API chính thức**
-+ proxy xoay vòng + caching. Khi Phúc đăng ký xong tài khoản Affiliate Partner,
-chỉ cần thay nội dung hàm `fetchCurrentPrice` trong file này, phần còn lại của
-hệ thống không cần đổi.
-
-## Việc tiếp theo (chưa nằm trong scope hôm nay)
-
-- Cron job `PriceCheckerService.runDailyCheck()` để check giá định kỳ + bắn FCM
-  (đã có sẵn ở sequence diagram/ERD trong các lần trao đổi trước).
-- Bảng `PriceHistory` để vẽ biểu đồ 90 ngày + phát hiện sale ảo.
+2. **Cơ chế Fallback & Demo Trigger:**
+   - `shopeePriceService.js` hiện gọi endpoint của Shopee. Khi chạy trên cloud, Shopee kích hoạt tường lửa chống bot (WAF/Cloudflare) chặn IP. Hệ thống xử lý theo hướng **Graceful Degradation**: tự động bóc tách tên sản phẩm từ URL slug để lưu vào DB và tiếp tục theo dõi thay vì gián đoạn. Về lâu dài sẽ tích hợp Shopee Affiliate Open API chính thức.
+   - `GET /api/test/simulate-price-drop` hỗ trợ nhận query `productName` và `targetPrice` để phục vụ **Smart Demo Trigger** khi thuyết trình 5 phút trên lớp học, giúp mô phỏng chuẩn xác sự kiện sập giá cho đúng món đang theo dõi.

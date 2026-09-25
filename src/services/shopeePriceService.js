@@ -13,14 +13,19 @@ const SHOPEE_ITEM_ENDPOINT = "https://shopee.vn/api/v4/item/get";
  */
 async function fetchCurrentPrice(itemId, shopId) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const timeoutId = setTimeout(() => controller.abort(), 2500);
   try {
     const { data } = await axios.get(SHOPEE_ITEM_ENDPOINT, {
       params: { itemid: itemId, shopid: shopId },
-      headers: { "User-Agent": "Mozilla/5.0 (DealPing-PriceChecker)" },
-      timeout: 5000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+      },
+      timeout: 2500,
       signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     const item = data?.data;
     if (!item || typeof item.price !== "number") {

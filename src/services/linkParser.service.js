@@ -68,6 +68,56 @@ function extractIdsFromLongUrl(longUrl) {
 }
 
 /**
+ * Trích xuất tên sản phẩm từ URL đã phân giải (Shopee, Lazada, TikTok)
+ */
+function extractProductNameFromUrl(url) {
+  if (!url || typeof url !== "string") return null;
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname;
+    const hostname = parsed.hostname;
+
+    // 1. Shopee: Pattern /Ten-san-pham-i.shopId.itemId
+    const shopeeMatch = pathname.match(/^\/(.+)-i\.\d+\.\d+/);
+    if (shopeeMatch) {
+      return decodeURIComponent(shopeeMatch[1])
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase())
+        .trim();
+    }
+
+    // 2. Lazada
+    if (hostname.includes("lazada")) {
+      const matchSlug =
+        url.match(/\/products\/([^/?#]+?)-i\d+/) ||
+        url.match(/\/products\/([^/?#]+?)(?:-s\d+)?(?:\.html|\?|$|#)/) ||
+        url.match(/\/products\/([^/?#]+)/);
+      if (matchSlug) {
+        return decodeURIComponent(matchSlug[1])
+          .replace(/-/g, " ")
+          .trim()
+          .replace(/\b([a-zA-Z])/g, (l) => l.toUpperCase());
+      }
+      return "Sản phẩm Lazada";
+    }
+
+    // 3. TikTok
+    if (hostname.includes("tiktok")) {
+      const match = pathname.match(/\/view\/item\/(\d+)/) || pathname.match(/\/product\/([^/?#]+)/);
+      return match ? "Sản phẩm TikTok Shop" : "Sản phẩm TikTok Shop";
+    }
+
+    if (hostname.includes("shopee") || /shp\.ee/.test(hostname)) {
+      return "Sản phẩm Shopee";
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Entry point chính: nhận vào bất kỳ link Shopee nào (dài hoặc rút gọn),
  * trả về { itemId, shopId, resolvedUrl }.
  */
@@ -105,5 +155,6 @@ module.exports = {
   isShortLink,
   resolveShortLink,
   extractIdsFromLongUrl,
+  extractProductNameFromUrl,
   parseShopeeLink,
 };

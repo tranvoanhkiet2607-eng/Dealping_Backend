@@ -2,8 +2,16 @@ const asyncHandler = require("../utils/asyncHandler");
 const trackingItemsService = require("../services/trackingItems.service");
 
 const create = asyncHandler(async (req, res) => {
-  const { userId, shopeeUrl, targetPrice, variantName, selectedModelId } = req.body;
-  const item = await trackingItemsService.createTrackingItem({ userId, shopeeUrl, targetPrice, variantName, selectedModelId });
+  const { userId, shopeeUrl, targetPrice, variantName, selectedModelId, productName, originalPrice } = req.body;
+  const item = await trackingItemsService.createTrackingItem({
+    userId,
+    shopeeUrl,
+    targetPrice,
+    variantName,
+    selectedModelId,
+    productName,
+    originalPrice,
+  });
   res.status(201).json({ success: true, data: item });
 });
 
@@ -27,8 +35,9 @@ const getHistory = asyncHandler(async (req, res) => {
 });
 
 const preview = asyncHandler(async (req, res) => {
-  const { url } = req.body;
-  const data = await trackingItemsService.previewTrackingItem(url);
+  const { url, shopeeUrl } = req.body;
+  const targetUrl = url || shopeeUrl;
+  const data = await trackingItemsService.previewTrackingItem(targetUrl);
   res.status(200).json({ success: true, data });
 });
 

@@ -3,6 +3,7 @@ const assert = require("node:assert");
 const {
   isShortLink,
   extractIdsFromLongUrl,
+  extractProductNameFromUrl,
 } = require("../src/services/linkParser.service");
 
 test("isShortLink nhận diện đúng link rút gọn vn.shp.ee, tiktok và lazada", () => {
@@ -35,4 +36,15 @@ test("extractIdsFromLongUrl trả về null nếu link không đúng định d�
   const url = "https://shopee.vn/some-random-page";
   const result = extractIdsFromLongUrl(url);
   assert.strictEqual(result, null);
+});
+
+test("extractProductNameFromUrl bóc tách đúng tên sản phẩm từ URL Shopee, Lazada, TikTok", () => {
+  const shopeeUrl = "https://shopee.vn/Chuot-Khong-Day-Logitech-G304-Lightspeed-i.123.456";
+  assert.strictEqual(extractProductNameFromUrl(shopeeUrl), "Chuot Khong Day Logitech G304 Lightspeed");
+
+  const lazadaUrl = "https://www.lazada.vn/products/ban-phim-co-dareu-ek87-i539784851.html";
+  assert.strictEqual(extractProductNameFromUrl(lazadaUrl), "Ban Phim Co Dareu Ek87");
+
+  const tiktokUrl = "https://www.tiktok.com/view/item/123456789";
+  assert.strictEqual(extractProductNameFromUrl(tiktokUrl), "Sản phẩm TikTok Shop");
 });
