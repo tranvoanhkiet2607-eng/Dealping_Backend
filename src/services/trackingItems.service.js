@@ -1,6 +1,6 @@
 const prisma = require("../config/prisma");
 const ApiError = require("../utils/ApiError");
-const { parseShopeeLink, extractProductNameFromUrl } = require("./linkParser.service");
+const { parseShopeeLink, extractProductNameFromUrl, extractPriceFromUrl } = require("./linkParser.service");
 const { fetchCurrentPrice } = require("./shopeePriceService");
 
 /**
@@ -70,6 +70,11 @@ async function createTrackingItem({
     }
   }
 
+  // Thử trích xuất giá từ link nếu API bị chặn
+  if (!currentPrice) {
+    currentPrice = extractPriceFromUrl(resolvedUrl);
+  }
+
   // Fallback an toàn: nếu chưa có tên sản phẩm, tự động bóc tách từ URL slug thật
   if (!productName) {
     productName = extractProductNameFromUrl(resolvedUrl) || "Sản phẩm theo dõi";
@@ -136,11 +141,31 @@ async function getTrackingItemHistory(id) {
 
 async function previewTrackingItem(shopeeUrl) {
   if (!shopeeUrl) throw new ApiError(400, "Thiếu shopeeUrl");
-  const { resolvedUrl } = await parseShopeeLink(shopeeUrl);
+  const { itemId, shopId, resolvedUrl } = await parseShopeeLink(shopeeUrl);
   
-  // Trích xuất tên từ URL đã resolve
-  const productName = extractProductNameFromUrl(resolvedUrl) || "Sản phẩm theo dõi";
-  const currentPrice = null; // Giá hiện hành để null để người dùng nhập giá mục tiêu hoặc cập nhật sau
+  let productName = null;
+  let currentPrice = null;
+
+  // 1. Thử lấy giá thật và tên từ API Shopee nếu có itemId & shopId
+  if (itemId && shopId) {
+    try {
+      const priceInfo = await fetchCurrentPrice(itemId, shopId);
+      currentPrice = priceInfo.price;
+      productName = priceInfo.productName;
+    } catch {
+      // Shopee chặn IP cloud -> fallback bóc tách từ link
+    }
+  }
+
+  // 2. Thử bóc tách giá từ URL (ví dụ link Lazada có displayPrice)
+  if (!currentPrice) {
+    currentPrice = extractPriceFromUrl(resolvedUrl);
+  }
+
+  // 3. Fallback bóc tách tên sản phẩm từ URL slug thật
+  if (!productName) {
+    productName = extractProductNameFromUrl(resolvedUrl) || "Sản phẩm theo dõi";
+  }
 
   return {
     productName,
