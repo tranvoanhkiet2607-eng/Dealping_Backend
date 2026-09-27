@@ -2,6 +2,7 @@ const prisma = require("../config/prisma");
 const ApiError = require("../utils/ApiError");
 const { parseShopeeLink, extractProductNameFromUrl, extractPriceFromUrl } = require("./linkParser.service");
 const { fetchCurrentPrice } = require("./shopeePriceService");
+const tiktokPriceService = require("./tiktokPriceService");
 
 /**
  * unlockedSlot2 = false -> tối đa 1 item
@@ -60,7 +61,7 @@ async function createTrackingItem({
 
   if (itemId && shopId) {
     try {
-      const priceInfo = await fetchCurrentPrice(itemId, shopId);
+      const priceInfo = await fetchCurrentPrice(itemId, shopId, resolvedUrl);
       currentPrice = priceInfo.price;
       if (!productName) {
         productName = priceInfo.productName;
@@ -68,6 +69,14 @@ async function createTrackingItem({
     } catch {
       // Graceful Fallback: nếu Shopee chặn IP đám mây, không sập luồng
     }
+  } else if (/tiktok/.test(resolvedUrl)) {
+    try {
+      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl);
+      currentPrice = tiktokInfo.price;
+      if (!productName) {
+        productName = tiktokInfo.productName;
+      }
+    } catch {}
   }
 
   // Thử trích xuất giá từ link nếu API bị chặn
@@ -149,12 +158,18 @@ async function previewTrackingItem(shopeeUrl) {
   // 1. Thử lấy giá thật và tên từ API Shopee nếu có itemId & shopId
   if (itemId && shopId) {
     try {
-      const priceInfo = await fetchCurrentPrice(itemId, shopId);
+      const priceInfo = await fetchCurrentPrice(itemId, shopId, resolvedUrl);
       currentPrice = priceInfo.price;
       productName = priceInfo.productName;
     } catch {
       // Shopee chặn IP cloud -> fallback bóc tách từ link
     }
+  } else if (/tiktok/.test(resolvedUrl)) {
+    try {
+      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl);
+      currentPrice = tiktokInfo.price;
+      productName = tiktokInfo.productName;
+    } catch {}
   }
 
   // 2. Thử bóc tách giá từ URL (ví dụ link Lazada có displayPrice)
