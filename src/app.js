@@ -25,14 +25,14 @@ app.get("/api/test/simulate-price-drop", (req, res) => {
   res.json({
     status: "success",
     isPriceDrop: true,
-    message: "Báo động sập giá! Nút test gọi thành công.",
+    message: "Báo động sập giá kích hoạt thành công.",
     data: {
-      productName: productName || "Chuột không dây Logitech (Test)",
+      productName: productName || "Sản phẩm Shopee / TikTok Shop",
       oldPrice,
       newPrice,
       flashSalePrice: newPrice,
-      cashbackCommission: Math.round(newPrice * 0.05),
-      discountCodes: ["GIAM99K", "FREESHIP"],
+      cashbackCommission: Math.round(newPrice * 0.08),
+      discountCodes: ["FREESHIP", "GIAM20K"],
       timestamp: new Date().toISOString()
     }
   });
