@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const prisma = require("../config/prisma");
 const { fetchCurrentPrice: fetchShopeePrice } = require("./shopeePriceService");
 const tiktokPriceService = require("./tiktokPriceService");
+const lazadaPriceService = require("./lazadaPriceService");
 
 /**
  * Bắt đầu các cron jobs để lấy giá tự động.
@@ -22,6 +23,9 @@ function startCronJobs() {
           if (item.shopeeUrl && /tiktok/.test(item.shopeeUrl)) {
             const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(item.shopeeUrl, item.itemId?.toString());
             currentPrice = tiktokInfo.price;
+          } else if (item.shopeeUrl && /lazada/.test(item.shopeeUrl)) {
+            const lazadaInfo = await lazadaPriceService.fetchCurrentPrice(item.shopeeUrl);
+            currentPrice = lazadaInfo.price;
           } else if (item.itemId && item.shopId) {
             const shopeeInfo = await fetchShopeePrice(
               item.itemId.toString(),

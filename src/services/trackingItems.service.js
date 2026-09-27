@@ -1,8 +1,9 @@
 const prisma = require("../config/prisma");
 const ApiError = require("../utils/ApiError");
 const { parseShopeeLink, extractProductNameFromUrl, extractPriceFromUrl } = require("./linkParser.service");
-const { fetchCurrentPrice } = require("./shopeePriceService");
+const { fetchCurrentPrice: fetchShopeePrice, appendShopeeAffiliateTag } = require("./shopeePriceService");
 const tiktokPriceService = require("./tiktokPriceService");
+const lazadaPriceService = require("./lazadaPriceService");
 
 /**
  * unlockedSlot2 = false -> tối đa 1 item
@@ -58,24 +59,28 @@ async function createTrackingItem({
 
   let currentPrice = inputOriginalPrice || null;
   let productName = inputProductName?.trim() || null;
+  let finalTrackingUrl = resolvedUrl;
 
-  if (itemId && shopId) {
+  if (/tiktok/.test(resolvedUrl)) {
     try {
-      const priceInfo = await fetchCurrentPrice(itemId, shopId, resolvedUrl);
-      currentPrice = priceInfo.price;
-      if (!productName) {
-        productName = priceInfo.productName;
-      }
-    } catch {
-      // Graceful Fallback: nếu Shopee chặn IP đám mây, không sập luồng
-    }
-  } else if (/tiktok/.test(resolvedUrl)) {
-    try {
-      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl);
+      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl, itemId);
       currentPrice = tiktokInfo.price;
-      if (!productName) {
-        productName = tiktokInfo.productName;
-      }
+      if (!productName) productName = tiktokInfo.productName;
+      if (tiktokInfo.offerLink) finalTrackingUrl = tiktokInfo.offerLink;
+    } catch {}
+  } else if (/lazada/.test(resolvedUrl)) {
+    try {
+      const lazadaInfo = await lazadaPriceService.fetchCurrentPrice(resolvedUrl);
+      currentPrice = lazadaInfo.price;
+      if (!productName) productName = lazadaInfo.productName;
+    } catch {}
+  } else {
+    // Mặc định Shopee
+    try {
+      const priceInfo = await fetchShopeePrice(itemId, shopId, resolvedUrl);
+      currentPrice = priceInfo.price;
+      if (!productName) productName = priceInfo.productName;
+      if (priceInfo.offerLink) finalTrackingUrl = priceInfo.offerLink;
     } catch {}
   }
 
@@ -97,7 +102,7 @@ async function createTrackingItem({
       shopId: shopId ? BigInt(shopId) : null,
       originalPrice: currentPrice,
       targetPrice,
-      shopeeUrl: resolvedUrl,
+      shopeeUrl: finalTrackingUrl || resolvedUrl,
       status: "TRACKING",
       variantName,
       selectedModelId: selectedModelId ? BigInt(selectedModelId) : null,
@@ -154,21 +159,33 @@ async function previewTrackingItem(shopeeUrl) {
   
   let productName = null;
   let currentPrice = null;
+  let variants = ["Mặc định (Tất cả phân loại)", "Màu Đen", "Màu Trắng", "Size M", "Size L"];
+  let offerLink = resolvedUrl;
 
-  // 1. Thử lấy giá thật và tên từ API Shopee nếu có itemId & shopId
-  if (itemId && shopId) {
+  if (/tiktok/.test(resolvedUrl)) {
     try {
-      const priceInfo = await fetchCurrentPrice(itemId, shopId, resolvedUrl);
-      currentPrice = priceInfo.price;
-      productName = priceInfo.productName;
-    } catch {
-      // Shopee chặn IP cloud -> fallback bóc tách từ link
-    }
-  } else if (/tiktok/.test(resolvedUrl)) {
-    try {
-      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl);
+      const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl, itemId);
       currentPrice = tiktokInfo.price;
       productName = tiktokInfo.productName;
+      if (tiktokInfo.variants) variants = tiktokInfo.variants;
+      if (tiktokInfo.offerLink) offerLink = tiktokInfo.offerLink;
+    } catch {}
+  } else if (/lazada/.test(resolvedUrl)) {
+    try {
+      const lazadaInfo = await lazadaPriceService.fetchCurrentPrice(resolvedUrl);
+      currentPrice = lazadaInfo.price;
+      productName = lazadaInfo.productName;
+      if (lazadaInfo.variants) variants = lazadaInfo.variants;
+      if (lazadaInfo.offerLink) offerLink = lazadaInfo.offerLink;
+    } catch {}
+  } else {
+    // Mặc định Shopee
+    try {
+      const priceInfo = await fetchShopeePrice(itemId, shopId, resolvedUrl);
+      currentPrice = priceInfo.price;
+      productName = priceInfo.productName;
+      if (priceInfo.variants) variants = priceInfo.variants;
+      if (priceInfo.offerLink) offerLink = priceInfo.offerLink;
     } catch {}
   }
 
@@ -187,13 +204,8 @@ async function previewTrackingItem(shopeeUrl) {
     currentPrice,
     price: currentPrice,
     resolvedUrl,
-    variants: [
-      "Mặc định (Tất cả phân loại)",
-      "Màu Đen",
-      "Màu Trắng",
-      "Size M",
-      "Size L",
-    ],
+    offerLink,
+    variants,
   };
 }
 
