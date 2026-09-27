@@ -185,6 +185,7 @@ async function previewTrackingItem(shopeeUrl) {
   return {
     productName,
     currentPrice,
+    price: currentPrice,
     resolvedUrl,
     variants: [
       "Mặc định (Tất cả phân loại)",
