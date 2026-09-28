@@ -13,14 +13,32 @@ app.use(express.json());
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
+const { scanTopLiveDeals } = require("./services/dealsScannerService");
+
+// API quét trực tiếp các món SALE CHẠM ĐÁY nhiều nhất trên 3 sàn Shopee, TikTok, Lazada
+app.get("/api/deals/top-sales", async (req, res) => {
+  try {
+    const deals = await scanTopLiveDeals();
+    res.json({
+      status: "success",
+      count: deals.length,
+      data: deals,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
 // API test giả lập sập giá để test âm thanh chuông báo động trên web (Demo Trigger)
 app.get("/api/test/simulate-price-drop", (req, res) => {
-  const { productName, targetPrice } = req.query;
+  const { productName, targetPrice, basePrice, oldPrice: queryOldPrice, imageUrl, affiliateUrl } = req.query;
   const numTarget = Number(targetPrice);
+  const numBase = Number(basePrice) || Number(queryOldPrice);
   const hasTarget = !isNaN(numTarget) && numTarget > 0;
+  const hasBase = !isNaN(numBase) && numBase > 0;
 
-  const oldPrice = hasTarget ? Math.round(numTarget * 1.3) : 350000;
-  const newPrice = hasTarget ? Math.round(numTarget * 0.8) : 99000;
+  const oldPrice = hasBase ? numBase : (hasTarget ? Math.round(numTarget * 1.3) : 350000);
+  const newPrice = hasTarget ? numTarget : (hasBase ? Math.round(numBase * 0.78) : 99000);
 
   res.json({
     status: "success",
@@ -31,7 +49,9 @@ app.get("/api/test/simulate-price-drop", (req, res) => {
       oldPrice,
       newPrice,
       flashSalePrice: newPrice,
-      cashbackCommission: Math.round(newPrice * 0.08),
+      imageUrl: imageUrl || null,
+      affiliateUrl: affiliateUrl || null,
+      cashbackCommission: Math.round(newPrice * 0.05),
       discountCodes: ["FREESHIP", "GIAM20K"],
       timestamp: new Date().toISOString()
     }

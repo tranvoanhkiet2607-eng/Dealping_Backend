@@ -37,7 +37,7 @@ async function generateTikTokDeeplink(originalUrl, utm = {}) {
     }
   } catch (err) {}
 
-  return `https://shorten.asia/dealping?url=${encodeURIComponent(originalUrl)}&pub_id=${PUBLISHER_ID}`;
+  return originalUrl;
 }
 
 /**
@@ -60,6 +60,7 @@ async function fetchFromAddLiveTag(url) {
 
         return {
           price: price,
+          voucherPrice: Number(p.voucherPrice) || Number(p.discountPrice) || (p.priceAfterVoucher ? Number(p.priceAfterVoucher) : null),
           productName: p.productName || "Sản phẩm TikTok Shop",
           offerLink: offerLink,
           imageUrl: p.imageUrl || null,

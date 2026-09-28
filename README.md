@@ -1,101 +1,103 @@
-# DealPing Backend
+# 🚀 DealPing Backend — Multi-Platform Price Tracking & Deal Radar API
 
-Backend cho DealPing (EXE101) — Express.js + PostgreSQL (Prisma ORM).
+<div align="center">
 
-## Cấu trúc
+![DealPing Backend](https://img.shields.io/badge/DealPing-Backend_API-6366f1?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+
+> **Hệ thống API bóc tách dữ liệu & theo dõi biến động giá 24/7 trên Shopee, TikTok Shop, và Lazada.**
+
+</div>
+
+---
+
+## 📖 Tổng Quan
+
+DealPing Backend cung cấp hạ tầng phân giải link, cào dữ liệu giá trực tiếp theo thời gian thực (Real-time Price Engine), quản lý các mặt hàng theo dõi của người dùng, phân tích biến động giá (Price History), và tự động cảnh báo khi sản phẩm đạt mức giá mục tiêu (`TARGET_HIT`).
+
+Dự án thuộc học phần **EXE101 — Khởi Nghiệp Đổi Mới Sáng Tạo (FA26)**.
+
+---
+
+## 🏗️ Cấu Trúc Dự Án
 
 ```
-dealping-backend/
+Dealping_Backend/
 ├── prisma/
-│   └── schema.prisma          # Users, TrackingItems (database siêu nhẹ)
+│   └── schema.prisma              # Schema database: User, TrackingItem, PriceHistory
 ├── src/
-│   ├── app.js                 # Khởi tạo Express app + middleware
-│   ├── server.js              # Entry point
-│   ├── config/prisma.js       # Prisma client singleton
-│   ├── routes/                # Định nghĩa route
-│   ├── controllers/           # Xử lý request/response
+│   ├── app.js                     # Cấu hình Express app, CORS, routes
+│   ├── server.js                  # Entry point khởi chạy server
+│   ├── config/
+│   │   └── prisma.js              # Prisma Client instance singleton
+│   ├── routes/
+│   │   ├── trackingItems.routes.js # API quản lý món đồ theo dõi & preview link
+│   │   └── test.routes.js          # API test simulation & Top Deals radar
+│   ├── controllers/
+│   │   ├── trackingItems.controller.js
+│   │   └── test.controller.js
 │   ├── services/
-│   │   ├── linkParser.service.js    # Module bóc tách link Shopee (dài + rút gọn)
-│   │   ├── shopeePriceService.js  # Gọi API lấy giá hiện tại
-│   │   └── trackingItems.service.js  # Nghiệp vụ + validation giới hạn slot
-│   ├── middlewares/errorHandler.js
+│   │   ├── dealsScannerService.js  # Engine quét top deal giảm sâu đa sàn (Lazada, Shopee, TikTok)
+│   │   ├── shopeePriceService.js   # Bóc tách giá Shopee (AddLiveTag + Open API + Fallback)
+│   │   ├── tiktokPriceService.js   # Bóc tách giá TikTok Shop & Deeplink
+│   │   ├── lazadaPriceService.js   # Bóc tách giá Lazada & Deeplink
+│   │   ├── linkParser.service.js   # Giải mã link rút gọn (shp.ee, vt.tiktok, s.lazada) & bóc item ID
+│   │   ├── trackingItems.service.js # Logic nghiệp vụ CRUD tracking items & preview
+│   │   └── cronService.js          # Cron job chạy ngầm quét giá định kỳ 24/7
+│   ├── middlewares/
+│   │   └── errorHandler.js        # Global error handling
 │   └── utils/
+│       └── ApiError.js
 └── tests/
-    └── linkParser.service.test.js   # Test thuần logic, không cần network/DB
+    ├── linkParser.service.test.js
+    └── priceServices.test.js
 ```
 
-## Cài đặt
+---
+
+## ⚡ Các Endpoint API Chính
+
+### 1. Phân giải & Xem trước sản phẩm (Preview Link)
+- **`POST /api/tracking-items/preview`**
+- **Body**: `{ "shopeeUrl": "https://shopee.vn/..." }` (Hỗ trợ Shopee, TikTok Shop, Lazada)
+- **Response**: Trả về Tên sản phẩm, Giá hiện hành, Giá sau Voucher, Ảnh đại diện CDN, Danh sách phân loại (SKU).
+
+### 2. Quản lý Sản Phẩm Theo Dõi (Tracking Items)
+- **`GET /api/tracking-items?userId=...`**: Lấy danh sách sản phẩm đang theo dõi.
+- **`POST /api/tracking-items`**: Thêm sản phẩm mới vào Radar theo dõi.
+- **`DELETE /api/tracking-items/:id`**: Hủy theo dõi sản phẩm.
+
+### 3. Radar Quét Top Deal Giảm Sâu (Top Sales Scanner)
+- **`GET /api/deals/top-sales`**: Trả về danh sách deal đang giảm sâu nhất trên các sàn được sắp xếp theo % giảm giá giảm dần.
+
+### 4. Giả Lập Báo Động Sập Giá (Simulate Price Drop)
+- **`GET /api/test/simulate-price-drop`**: Kích hoạt còi hú báo động mô phỏng cú sập giá phục vụ thuyết trình/demo pitch.
+
+---
+
+## 🛠️ Cài Đặt & Chạy Local
 
 ```bash
+# 1. Cài đặt dependencies
 npm install
+
+# 2. Cấu hình biến môi trường
 cp .env.example .env
-# sửa DATABASE_URL trong .env trỏ tới PostgreSQL của bạn
+# Chỉnh sửa DATABASE_URL trỏ tới PostgreSQL của bạn
 
-npx prisma migrate dev --name init   # tạo bảng users, tracking_items
+# 3. Chạy Prisma Migrate
+npx prisma migrate dev --name init
 npx prisma generate
-npm run dev                          # chạy tại http://localhost:3000
+
+# 4. Khởi chạy server
+npm run dev
 ```
 
-## Chạy test (không cần DB)
+Server sẽ chạy tại: `http://localhost:3000`
 
-```bash
-npm test
-```
+---
 
-Test hiện tại kiểm tra `linkParser.service` — bóc tách `itemId`/`shopId` từ cả link dài
-(`shopee.vn/...-i.{shopId}.{itemId}`) lẫn nhận diện đúng link rút gọn (`vn.shp.ee/...`).
-
-## API
-
-### `POST /api/tracking-items`
-Tạo item theo dõi giá mới.
-
-```json
-{
-  "userId": "uuid-của-user",
-  "shopeeUrl": "https://shopee.vn/San-pham-i.123456.789012",
-  "targetPrice": 199000
-}
-```
-
-- Trả về **400** nếu user đã đạt giới hạn slot (mặc định 1, `unlockedSlot2=true` thì 2).
-- Trả về **400** nếu không bóc tách được itemId/shopId từ link.
-- Tự động gọi Shopee lấy giá hiện tại để lưu vào `originalPrice` (không chặn tạo item nếu Shopee tạm lỗi).
-
-### `GET /api/tracking-items?userId=...`
-Danh sách item đang theo dõi của user.
-
-### `DELETE /api/tracking-items/:id`
-Xoá 1 item (body cần `userId` để xác thực quyền sở hữu).
-
-### `GET /api/test/simulate-price-drop`
-API giả lập sập giá phục vụ pitch/demo và kiểm thử âm thanh báo động trên web client.
-
-**Response mẫu (200):**
-```json
-{
-  "status": "success",
-  "isPriceDrop": true,
-  "message": "Báo động sập giá! Nút test gọi thành công.",
-  "data": {
-    "productName": "Chuột không dây Logitech (Test)",
-    "oldPrice": 350000,
-    "newPrice": 99000,
-    "flashSalePrice": 99000,
-    "cashbackCommission": 5000,
-    "discountCodes": ["GIAM99K", "FREESHIP"],
-    "timestamp": "2026-09-23T..."
-  }
-}
-```
-
-## Lưu ý quan trọng — Rủi ro kỹ thuật & Q&A Defense
-
-1. **Hệ thống THẬT 100%:**
-   - **Luồng dữ liệu:** Frontend $\to$ Backend Express $\to$ PostgreSQL qua Prisma ORM.
-   - **Cron job ngầm:** `cronService.js` tự động quét mỗi 30 phút (`*/30 * * * *`), lưu biến động vào bảng `PriceHistory` và chuyển trạng thái `TARGET_HIT` khi đạt giá mục tiêu.
-   - **Trích xuất link:** `linkParser.service.js` bóc tách `itemId`, `shopId` và tên sản phẩm từ URL thật (Shopee, Lazada, TikTok Shop).
-
-2. **Cơ chế Fallback & Demo Trigger:**
-   - `shopeePriceService.js` hiện gọi endpoint của Shopee. Khi chạy trên cloud, Shopee kích hoạt tường lửa chống bot (WAF/Cloudflare) chặn IP. Hệ thống xử lý theo hướng **Graceful Degradation**: tự động bóc tách tên sản phẩm từ URL slug để lưu vào DB và tiếp tục theo dõi thay vì gián đoạn. Về lâu dài sẽ tích hợp Shopee Affiliate Open API chính thức.
-   - `GET /api/test/simulate-price-drop` hỗ trợ nhận query `productName` và `targetPrice` để phục vụ **Smart Demo Trigger** khi thuyết trình 5 phút trên lớp học, giúp mô phỏng chuẩn xác sự kiện sập giá cho đúng món đang theo dõi.
+## 👥 Đội Ngũ Phát Triển (Team DealPing - FA26)
+- Dự án EXE101: Ứng Dụng Trợ Lý Săn Deal Sập Giá Đa Sàn TMĐT.

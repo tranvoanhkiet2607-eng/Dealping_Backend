@@ -159,6 +159,9 @@ async function previewTrackingItem(shopeeUrl) {
   
   let productName = null;
   let currentPrice = null;
+  let voucherPrice = null;
+  let imageUrl = null;
+  let affiliateUrl = null;
   let variants = ["Mặc định (Tất cả phân loại)", "Màu Đen", "Màu Trắng", "Size M", "Size L"];
   let offerLink = resolvedUrl;
 
@@ -166,7 +169,10 @@ async function previewTrackingItem(shopeeUrl) {
     try {
       const tiktokInfo = await tiktokPriceService.fetchCurrentPrice(resolvedUrl, itemId);
       currentPrice = tiktokInfo.price;
+      voucherPrice = tiktokInfo.voucherPrice || null;
       productName = tiktokInfo.productName;
+      imageUrl = tiktokInfo.imageUrl || null;
+      affiliateUrl = tiktokInfo.offerLink || null;
       if (tiktokInfo.variants) variants = tiktokInfo.variants;
       if (tiktokInfo.offerLink) offerLink = tiktokInfo.offerLink;
     } catch {}
@@ -174,7 +180,10 @@ async function previewTrackingItem(shopeeUrl) {
     try {
       const lazadaInfo = await lazadaPriceService.fetchCurrentPrice(resolvedUrl);
       currentPrice = lazadaInfo.price;
+      voucherPrice = lazadaInfo.voucherPrice || null;
       productName = lazadaInfo.productName;
+      imageUrl = lazadaInfo.imageUrl || null;
+      affiliateUrl = lazadaInfo.offerLink || null;
       if (lazadaInfo.variants) variants = lazadaInfo.variants;
       if (lazadaInfo.offerLink) offerLink = lazadaInfo.offerLink;
     } catch {}
@@ -183,7 +192,10 @@ async function previewTrackingItem(shopeeUrl) {
     try {
       const priceInfo = await fetchShopeePrice(itemId, shopId, resolvedUrl);
       currentPrice = priceInfo.price;
+      voucherPrice = priceInfo.voucherPrice || null;
       productName = priceInfo.productName;
+      imageUrl = priceInfo.imageUrl || null;
+      affiliateUrl = priceInfo.offerLink || null;
       if (priceInfo.variants) variants = priceInfo.variants;
       if (priceInfo.offerLink) offerLink = priceInfo.offerLink;
     } catch {}
@@ -203,6 +215,9 @@ async function previewTrackingItem(shopeeUrl) {
     productName,
     currentPrice,
     price: currentPrice,
+    voucherPrice,
+    imageUrl,
+    affiliateUrl: affiliateUrl || offerLink,
     resolvedUrl,
     offerLink,
     variants,

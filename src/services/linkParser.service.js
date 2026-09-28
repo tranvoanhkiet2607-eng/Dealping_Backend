@@ -46,12 +46,11 @@ async function resolveShortLink(shortUrl, maxHops = 5) {
 }
 
 /**
- * Trích xuất itemId + shopId từ một link Shopee DẠNG DÀI.
- * Hỗ trợ 2 pattern phổ biến:
- *   1. https://shopee.vn/Ten-San-Pham-i.{shopId}.{itemId}
- *   2. https://shopee.vn/product/{shopId}/{itemId}
+ * Trích xuất itemId + shopId từ một link Shopee DẠNG DÀI hoặc từ Flash Sale / Universal Link query
  */
 function extractIdsFromLongUrl(longUrl) {
+  if (!longUrl || typeof longUrl !== "string") return null;
+
   // Pattern 1: ...-i.123456.789012(?query)
   const patternI = /-i\.(\d+)\.(\d+)(?:[/?#]|$)/;
   // Pattern 2: /product/123456/789012
@@ -59,12 +58,38 @@ function extractIdsFromLongUrl(longUrl) {
 
   let match = longUrl.match(patternI) || longUrl.match(patternProduct);
 
-  if (!match) {
-    return null;
+  if (match) {
+    const [, shopId, itemId] = match;
+    return { shopId, itemId };
   }
 
-  const [, shopId, itemId] = match;
-  return { shopId, itemId };
+  // Pattern 3: Query parameters (fromItem, item_id, itemid, itemId, shop_id, shopid, shopId)
+  try {
+    const urlObj = new URL(longUrl);
+    const params = urlObj.searchParams;
+    const itemId = params.get("item_id") || params.get("itemid") || params.get("itemId") || params.get("fromItem") || params.get("from_item");
+    const shopId = params.get("shop_id") || params.get("shopid") || params.get("shopId") || params.get("fromShop") || params.get("from_shop");
+
+    if (itemId) {
+      return { shopId: shopId || null, itemId };
+    }
+  } catch (e) {}
+
+  // Pattern 4: Check redirect query param like redir=... or url=...
+  try {
+    const urlObj = new URL(longUrl);
+    for (const [, val] of urlObj.searchParams.entries()) {
+      if (typeof val === "string" && (val.includes("-i.") || val.includes("/product/"))) {
+        const decoded = decodeURIComponent(val);
+        const subMatch = decoded.match(patternI) || decoded.match(patternProduct);
+        if (subMatch) {
+          return { shopId: subMatch[1], itemId: subMatch[2] };
+        }
+      }
+    }
+  } catch (e) {}
+
+  return null;
 }
 
 /**
@@ -77,13 +102,23 @@ function extractProductNameFromUrl(url) {
     const pathname = parsed.pathname;
     const hostname = parsed.hostname;
 
-    // 1. Shopee: Pattern /Ten-san-pham-i.shopId.itemId
-    const shopeeMatch = pathname.match(/^\/(.+)-i\.\d+\.\d+/);
-    if (shopeeMatch) {
-      return decodeURIComponent(shopeeMatch[1])
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase())
-        .trim();
+    // 1. Shopee
+    if (hostname.includes("shopee") || /shp\.ee/.test(hostname)) {
+      const shopeeMatch = pathname.match(/^\/(.+)-i\.\d+\.\d+/);
+      if (shopeeMatch) {
+        return decodeURIComponent(shopeeMatch[1])
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase())
+          .trim();
+      }
+      if (pathname.includes("flash_sale")) {
+        return "Sản phẩm Flash Sale Shopee";
+      }
+      const slug = pathname.replace(/^\/+|\/+$/g, "").split("/").pop();
+      if (slug && slug.length > 2 && slug !== "product") {
+        return decodeURIComponent(slug).replace(/[-_]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+      }
+      return "Sản phẩm Shopee";
     }
 
     // 2. Lazada
@@ -105,10 +140,6 @@ function extractProductNameFromUrl(url) {
     if (hostname.includes("tiktok")) {
       const match = pathname.match(/\/view\/item\/(\d+)/) || pathname.match(/\/product\/([^/?#]+)/);
       return match ? "Sản phẩm TikTok Shop" : "Sản phẩm TikTok Shop";
-    }
-
-    if (hostname.includes("shopee") || /shp\.ee/.test(hostname)) {
-      return "Sản phẩm Shopee";
     }
 
     return null;
@@ -159,10 +190,6 @@ async function parseShopeeLink(rawUrl) {
 
   const longUrl = isShortLink(rawUrl) ? await resolveShortLink(rawUrl) : rawUrl;
   const ids = extractIdsFromLongUrl(longUrl);
-
-  if (!ids && !/tiktok|lazada/.test(longUrl)) {
-    throw new ApiError(400, "Không trích xuất được itemId/shopId từ link này");
-  }
 
   return {
     itemId: ids ? ids.itemId : null,
